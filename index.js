@@ -15,7 +15,7 @@ var convertKitKey = process.env.CONVERTKIT_KEY;
 // var attachmentsPath = "C:\\Users\\brade\\Documents\\Personal Work\\BK Ideaverse\\Atlas\\Utilities\\Images";
 var mdFilePath = process.env.FILE_PATH
 var attachmentsPath = process.env.ATTACHMENT_PATH;
-var sendtoConvertKit = true;
+var sendtoConvertKit = process.env.SEND_To_CONVERTKIT;
 
 var compressedPath = process.env.SCRATCH_PATH;
 
