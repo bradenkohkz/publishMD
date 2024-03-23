@@ -1,0 +1,21 @@
+{
+  "name": "md-ghost-publish",
+  "version": "1.0.0",
+  "description": "pushes a md file to Ghost ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@tryghost/admin-api": "^1.13.11",
+    "dotenv": "^16.4.5",
+    "fetch": "^1.1.0",
+    "gifsicle": "^7.0.1",
+    "markdown-it": "^14.1.0",
+    "node-fetch": "^3.3.2",
+    "sharp": "^0.33.2"
+  }
+}
