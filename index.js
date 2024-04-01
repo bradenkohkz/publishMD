@@ -4,6 +4,7 @@ const MarkdownIt = require("markdown-it");
 const path = require('path');
 const sharp = require('sharp')
 const util = require('util')
+const sizeOf = require("image-size")
 const exec = util.promisify(require('child_process').exec);
 require('dotenv').config();
 
@@ -11,11 +12,11 @@ var ghostUrl = process.env.GHOST_URL;
 var ghostKey = process.env.GHOST_KEY;
 var convertKitKey = process.env.CONVERTKIT_KEY;
 
-// var mdFilePath = "C:\\Users\\brade\\Documents\\Personal Work\\BK Ideaverse\\Efforts\\Notes\\Grasshopper Findings (Personal Website)\\Grasshopper Keyboard Shortcuts Test.md";
-// var attachmentsPath = "C:\\Users\\brade\\Documents\\Personal Work\\BK Ideaverse\\Atlas\\Utilities\\Images";
-var mdFilePath = process.env.FILE_PATH
+var mdFilePath =  process.argv[2];
+var sendtoConvertKit = process.argv[3].toLowerCase().includes("t");
+// var mdFilePath = process.env.FILE_PATH;
+// var sendtoConvertKit = process.env.SEND_To_CONVERTKIT;
 var attachmentsPath = process.env.ATTACHMENT_PATH;
-var sendtoConvertKit = process.env.SEND_To_CONVERTKIT;
 
 var compressedPath = process.env.SCRATCH_PATH;
 
@@ -25,14 +26,22 @@ const md = new MarkdownIt({
     html: true,
 })
 
+// Replace markdown media links with wikilinks
+var content = fileLines.replace(
+    /!\[.*?\]\((.*?)\)/g,
+    mdLinkToWikiLinkReplacer
+)
+
+
 // render md to html
-var htmlContent = md.render(fileLines)
+var htmlContent = md.render(content)
 
 // replace media wikilinks with html img paths
 htmlContent = htmlContent.replace(
     /<p>\!\[\[(.*?)\]\]<\/p>|<p>!\[.*?\]\((.*?)\)<\/p>/g,
     mediaWikiLinkReplacer
 )
+
 
 // Start the Ghost API service
 const api = new GhostAdminAPI({
@@ -54,7 +63,7 @@ const fileNameWithoutExtension = baseNameWithExtension.replace(extension, '');
 processImagesInHTML(htmlContent)
     .then(html => {
         if (sendtoConvertKit){
-            return fetch('https://api.convertkit.com/v3/broadcasts', {
+            fetch('https://api.convertkit.com/v3/broadcasts', {
                 method: 'POST',
                 headers: {
                     "Content-Type" : "application/json"
@@ -64,7 +73,7 @@ processImagesInHTML(htmlContent)
                         "api_secret": convertKitKey,
                         "subject":fileNameWithoutExtension,
                         "content": html,
-                        "email_layout_template": "GHEC"
+                        "email_layout_template": "FridayFindings"
                     }
                 )
             })
@@ -81,6 +90,9 @@ processImagesInHTML(htmlContent)
 
 
 
+function mdLinkToWikiLinkReplacer(match, p1){
+    return `![[${p1}]]`
+}
 
 // Utility function to replace [[media]] with real path
 function mediaWikiLinkReplacer(match, p1) {
@@ -121,7 +133,15 @@ async function processImagesInHTML(html) {
             compressedFile = file.replace(attachmentsPath, compressedPath);
             html = html.replace(file, compressedFile);
         } else if (fileExt.toLowerCase() === ".gif") {
-            await exec(`gifsicle -O3 --lossy=80 "${file}" -o "${file.replace(attachmentsPath, compressedPath)}"`)
+            // Get size of the gif
+            const dimensions = sizeOf(file)
+            var modifiedFilePath = file;
+            if (dimensions.width > 1000){
+                // Resize the file by half
+                modifiedFilePath = file.replace(attachmentsPath, compressedPath);
+                await exec(`gifsicle --resize "${Math.round(dimensions.width/2)}x${Math.round(dimensions.height/2)}" "${file}" -o "${modifiedFilePath}"`)
+            }
+            await exec(`gifsicle -O3 --lossy=80 "${modifiedFilePath}" -o "${file.replace(attachmentsPath, compressedPath)}"`)
             // await exec(, ['-O3', '--lossy=80', file, '-o', file.replace(attachmentsPath, compressedPath)]);
             compressedFile = file.replace(attachmentsPath, compressedPath);
             html = html.replace(file, compressedFile);
