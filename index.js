@@ -12,7 +12,7 @@ var ghostUrl = process.env.GHOST_URL;
 var ghostKey = process.env.GHOST_KEY;
 var convertKitKey = process.env.CONVERTKIT_KEY;
 
-var mdFilePath =  process.argv[2];
+var mdFilePath = process.argv[2];
 var sendtoConvertKit = process.argv[3].toLowerCase().includes("t");
 // var mdFilePath = process.env.FILE_PATH;
 // var sendtoConvertKit = process.env.SEND_To_CONVERTKIT;
@@ -62,16 +62,16 @@ const fileNameWithoutExtension = baseNameWithExtension.replace(extension, '');
 //Upload the post to Ghost with images
 processImagesInHTML(htmlContent)
     .then(html => {
-        if (sendtoConvertKit){
+        if (sendtoConvertKit) {
             fetch('https://api.convertkit.com/v3/broadcasts', {
                 method: 'POST',
                 headers: {
-                    "Content-Type" : "application/json"
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify(
                     {
                         "api_secret": convertKitKey,
-                        "subject":fileNameWithoutExtension,
+                        "subject": fileNameWithoutExtension,
                         "content": html,
                         "email_layout_template": "FridayFindings"
                     }
@@ -89,8 +89,7 @@ processImagesInHTML(htmlContent)
     .catch(err => console.log("catched error", err))
 
 
-
-function mdLinkToWikiLinkReplacer(match, p1){
+function mdLinkToWikiLinkReplacer(match, p1) {
     return `![[${p1}]]`
 }
 
@@ -121,25 +120,55 @@ async function processImagesInHTML(html) {
 
         // Compress images and put them in the compressed path before uploading them
         if (fileExt.toLowerCase() === ".png") {
-            await sharp(file)
-                .png({compressionLevel: 9})
-                .toFile(`${compressedPath}/${fileName}`)
+            // Get size of the file
+            const dimensions = sizeOf(file)
+
+            if (dimensions.width > 1000) {
+                await sharp(file)
+                    .resize({
+                        fit: sharp.fit.contain,
+                        width: Math.round(dimensions.width / 2),
+                        height: Math.round(dimensions.height / 2)
+                    })
+                    .png({compressionLevel: 9})
+                    .toFile(`${compressedPath}/${fileName}`)
+            } else {
+                await sharp(file)
+                    .png({compressionLevel: 9})
+                    .toFile(`${compressedPath}/${fileName}`)
+            }
+
             compressedFile = file.replace(attachmentsPath, compressedPath);
             html = html.replace(file, compressedFile);
         } else if (fileExt.toLowerCase() === ".jpg" || fileExt.toLowerCase() === ".jpeg") {
-            await sharp(file)
-                .jpeg({quality: 60})
-                .toFile(`${compressedPath}/${fileName}`)
+
+            // Get size of the gif
+            const dimensions = sizeOf(file)
+
+            if (dimensions.width > 1000) {
+                await sharp(file)
+                    .resize({
+                        fit: sharp.fit.contain,
+                        width: Math.round(dimensions.width / 2),
+                        height: Math.round(dimensions.height / 2)
+                    })
+                    .jpeg({quality: 60})
+                    .toFile(`${compressedPath}/${fileName}`)
+            } else {
+                await sharp(file)
+                    .jpeg({quality: 60})
+                    .toFile(`${compressedPath}/${fileName}`)
+            }
             compressedFile = file.replace(attachmentsPath, compressedPath);
             html = html.replace(file, compressedFile);
         } else if (fileExt.toLowerCase() === ".gif") {
             // Get size of the gif
             const dimensions = sizeOf(file)
             var modifiedFilePath = file;
-            if (dimensions.width > 1000){
+            if (dimensions.width > 1000) {
                 // Resize the file by half
                 modifiedFilePath = file.replace(attachmentsPath, compressedPath);
-                await exec(`gifsicle --resize "${Math.round(dimensions.width/2)}x${Math.round(dimensions.height/2)}" "${file}" -o "${modifiedFilePath}"`)
+                await exec(`gifsicle --resize "${Math.round(dimensions.width / 2)}x${Math.round(dimensions.height / 2)}" "${file}" -o "${modifiedFilePath}"`)
             }
             await exec(`gifsicle -O3 --lossy=80 "${modifiedFilePath}" -o "${file.replace(attachmentsPath, compressedPath)}"`)
             // await exec(, ['-O3', '--lossy=80', file, '-o', file.replace(attachmentsPath, compressedPath)]);
